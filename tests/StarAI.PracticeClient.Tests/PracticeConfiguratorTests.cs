@@ -148,8 +148,13 @@ public class PracticeConfiguratorTests
         Assert.True(File.Exists(coachConfig));
         Assert.Contains("\"autoTrainWorkers\": false", File.ReadAllText(coachConfig));
         Assert.Contains("\"autoMine\": false", File.ReadAllText(coachConfig));
+        Assert.Contains("\"autoBuildSuppliesBeforeBlocked\": -200", File.ReadAllText(coachConfig));
         Assert.Contains("\"maxProductionBuildingQueue\": 999999", File.ReadAllText(coachConfig));
+        Assert.Contains("\"workerCutWarningEvery\": 60", File.ReadAllText(coachConfig));
         Assert.Contains("\"idleWorkerWarningEvery\": 60", File.ReadAllText(coachConfig));
+        Assert.Contains("\"idleProductionBuildingWarningEvery\": 60", File.ReadAllText(coachConfig));
+        Assert.Contains("\"idleFightingUnitWarningEvery\": 60", File.ReadAllText(coachConfig));
+        Assert.Contains("\"workersCutCalculationPeriod\": 600", File.ReadAllText(coachConfig));
         Assert.Contains("\"TimedBo1\"", File.ReadAllText(coachConfig));
     }
 

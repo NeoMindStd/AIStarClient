@@ -283,7 +283,7 @@ public sealed class PracticeConfigurator
         controlPanel["logSupplyProduction"] = false;
         controlPanel["logUnitsProduction"] = false;
         controlPanel["showMultitaskStats"] = false;
-        controlPanel["workersCutCalculationPeriod"] = 999999;
+        controlPanel["workersCutCalculationPeriod"] = 600;
         controlPanel["dontDrift"] = -1;
         controlPanel["workerCutLimit"] = 999999;
         controlPanel["workerCutLimitForOnce"] = -1;
@@ -465,7 +465,7 @@ public sealed class PracticeConfigurator
             "logSupplyProduction": false,
             "logUnitsProduction": false,
             "showMultitaskStats": false,
-            "workersCutCalculationPeriod": 999999,
+            "workersCutCalculationPeriod": 600,
             "replayLogUnitsFor": 420,
             "replayLogSupplyFor": 40,
             "dontDrift": -1,

@@ -9,6 +9,8 @@ namespace StarAI.PracticeClient.Core;
 internal static class ChaosLauncherWindowAutomation
 {
     private const int BM_CLICK = 0x00F5;
+    private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+    private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
     public static bool ClickStart(Process process, TimeSpan timeout)
     {
@@ -20,7 +22,13 @@ internal static class ChaosLauncherWindowAutomation
                 var button = FindChildByText(window, "Start");
                 if (button != IntPtr.Zero)
                 {
+                    SetForegroundWindow(window);
                     SendMessage(button, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
+                    return true;
+                }
+
+                if (ClickApproximateStart(window))
+                {
                     return true;
                 }
             }
@@ -47,6 +55,16 @@ internal static class ChaosLauncherWindowAutomation
                 yield return window;
             }
         }
+
+        foreach (var window in TopLevelWindows())
+        {
+            var title = GetWindowText(window);
+            if (title.Contains("Chaoslauncher", StringComparison.OrdinalIgnoreCase) ||
+                title.Contains("ChaosLauncher", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return window;
+            }
+        }
     }
 
     private static IntPtr FindChildByText(IntPtr parent, string text)
@@ -54,7 +72,8 @@ internal static class ChaosLauncherWindowAutomation
         var found = IntPtr.Zero;
         EnumChildWindows(parent, (handle, _) =>
         {
-            if (string.Equals(GetWindowText(handle), text, StringComparison.OrdinalIgnoreCase))
+            var windowText = GetWindowText(handle).Replace("&", "", StringComparison.Ordinal);
+            if (windowText.Contains(text, StringComparison.OrdinalIgnoreCase))
             {
                 found = handle;
                 return false;
@@ -71,6 +90,28 @@ internal static class ChaosLauncherWindowAutomation
         }, IntPtr.Zero);
 
         return found;
+    }
+
+    private static bool ClickApproximateStart(IntPtr window)
+    {
+        if (!GetWindowRect(window, out var rect))
+        {
+            return false;
+        }
+
+        var width = rect.Right - rect.Left;
+        var height = rect.Bottom - rect.Top;
+        if (width < 200 || height < 120)
+        {
+            return false;
+        }
+
+        SetForegroundWindow(window);
+        Thread.Sleep(80);
+        SetCursorPos(rect.Left + 45, rect.Bottom - 24);
+        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+        return true;
     }
 
     private static IReadOnlyList<IntPtr> TopLevelWindows()
@@ -123,4 +164,25 @@ internal static class ChaosLauncherWindowAutomation
 
     [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr handle);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr handle, out Rect rect);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Rect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
 }

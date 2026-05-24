@@ -8,6 +8,7 @@ public sealed class MainForm : Form
     private readonly PracticeConfigurator _configurator = new();
     private readonly PracticeLauncher _launcher = new();
     private readonly MatchHistoryStore _history = new();
+    private readonly LauncherPreferences _preferences = LauncherPreferences.Load();
 
     private TextBox _rootBox = null!;
     private ComboBox _playerRaceBox = null!;
@@ -23,15 +24,18 @@ public sealed class MainForm : Form
     private TextBox _gameNameBox = null!;
     private CheckBox _windowedBox = null!;
     private CheckBox _coachBox = null!;
+    private CheckBox _confineMouseBox = null!;
     private ComboBox _coachBuildBox = null!;
     private Button _startButton = null!;
     private TextBox _detailsBox = null!;
     private TextBox _statusBox = null!;
+    private StarCraftMouseClipper? _mouseClipper;
 
     private IReadOnlyList<BotProfile> _allBots = Array.Empty<BotProfile>();
     private IReadOnlyList<MapProfile> _allMaps = Array.Empty<MapProfile>();
-    private Race _selectedPlayerRace = Race.Terran;
+    private Race _selectedPlayerRace = Race.Protoss;
     private bool _loadedInitialData;
+    private bool _suppressPreferenceSave = true;
 
     public MainForm()
     {
@@ -44,7 +48,16 @@ public sealed class MainForm : Form
         Font = new Font("Malgun Gothic", 10F);
 
         BuildUi();
-        LoadData(PracticeCatalog.DefaultRoot);
+        _mouseClipper = new StarCraftMouseClipper(() => _confineMouseBox.Checked);
+        FormClosed += (_, _) =>
+        {
+            SavePreferences();
+            _mouseClipper?.Dispose();
+        };
+
+        ApplyInitialPreferences();
+        LoadData(_preferences.StarCraftRoot ?? PracticeCatalog.DefaultRoot);
+        _suppressPreferenceSave = false;
     }
 
     private void BuildUi()
@@ -102,6 +115,7 @@ public sealed class MainForm : Form
             }
 
             RefreshBots();
+            SavePreferences();
         };
         panel.Controls.Add(_playerRaceBox);
 
@@ -118,6 +132,7 @@ public sealed class MainForm : Form
         {
             RefreshBuildFilters();
             RefreshBots();
+            SavePreferences();
         };
         panel.Controls.Add(_enemyRaceBox);
 
@@ -131,12 +146,20 @@ public sealed class MainForm : Form
             new TierChoice("드릴", DifficultyTier.Drill),
             new TierChoice("실험", DifficultyTier.Experimental)
         });
-        _tierBox.SelectedIndexChanged += (_, _) => RefreshBots();
+        _tierBox.SelectedIndexChanged += (_, _) =>
+        {
+            RefreshBots();
+            SavePreferences();
+        };
         panel.Controls.Add(_tierBox);
 
         panel.Controls.Add(Label("빌드 필터"));
         _buildFilterBox = Combo(Array.Empty<object>());
-        _buildFilterBox.SelectedIndexChanged += (_, _) => RefreshBots();
+        _buildFilterBox.SelectedIndexChanged += (_, _) =>
+        {
+            RefreshBots();
+            SavePreferences();
+        };
         panel.Controls.Add(_buildFilterBox);
 
         panel.Controls.Add(Label("정렬"));
@@ -147,12 +170,20 @@ public sealed class MainForm : Form
             new SortChoice("ELO 높은순", "elo-desc"),
             new SortChoice("이름순", "name")
         });
-        _sortBox.SelectedIndexChanged += (_, _) => RefreshBots();
+        _sortBox.SelectedIndexChanged += (_, _) =>
+        {
+            RefreshBots();
+            SavePreferences();
+        };
         panel.Controls.Add(_sortBox);
 
         panel.Controls.Add(Label("검색"));
         _searchBox = TextBox("봇 이름, 빌드, 메모 검색");
-        _searchBox.TextChanged += (_, _) => RefreshBots();
+        _searchBox.TextChanged += (_, _) =>
+        {
+            RefreshBots();
+            SavePreferences();
+        };
         panel.Controls.Add(_searchBox);
 
         _botList = new ListBox
@@ -176,11 +207,16 @@ public sealed class MainForm : Form
 
         panel.Controls.Add(Label("맵"));
         _mapBox = Combo(Array.Empty<object>());
+        _mapBox.SelectedIndexChanged += (_, _) => SavePreferences();
         panel.Controls.Add(_mapBox);
 
         panel.Controls.Add(Label("봇 빌드 / 행동"));
         _buildBox = Combo(Array.Empty<object>());
-        _buildBox.SelectedIndexChanged += (_, _) => UpdateDetails();
+        _buildBox.SelectedIndexChanged += (_, _) =>
+        {
+            UpdateDetails();
+            SavePreferences();
+        };
         panel.Controls.Add(_buildBox);
 
         panel.Controls.Add(Label("봇 메모"));
@@ -209,7 +245,11 @@ public sealed class MainForm : Form
         rootRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         rootRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
         _rootBox = TextBox(null);
-        _rootBox.TextChanged += (_, _) => LoadData(_rootBox.Text.Trim(), keepSelection: true);
+        _rootBox.TextChanged += (_, _) =>
+        {
+            LoadData(_rootBox.Text.Trim(), keepSelection: true);
+            SavePreferences();
+        };
         rootRow.Controls.Add(_rootBox, 0, 0);
         rootRow.Controls.Add(Button("찾기", (_, _) => BrowseRoot()), 1, 0);
         panel.Controls.Add(rootRow);
@@ -217,6 +257,7 @@ public sealed class MainForm : Form
         panel.Controls.Add(Label("방 이름"));
         _gameNameBox = TextBox(null);
         _gameNameBox.Text = "AIPractice";
+        _gameNameBox.TextChanged += (_, _) => SavePreferences();
         panel.Controls.Add(_gameNameBox);
 
         panel.Controls.Add(Label("게임 속도"));
@@ -227,13 +268,20 @@ public sealed class MainForm : Form
             new SpeedChoice("조금 빠르게 (24 ms/frame)", 24)
         });
         _speedBox.SelectedIndex = 1;
+        _speedBox.SelectedIndexChanged += (_, _) => SavePreferences();
         panel.Controls.Add(_speedBox);
 
         _windowedBox = Check("창모드 / W-MODE", true);
+        _windowedBox.CheckedChanged += (_, _) => SavePreferences();
         panel.Controls.Add(_windowedBox);
 
         _coachBox = Check("CoachAI 오버레이", true);
+        _coachBox.CheckedChanged += (_, _) => SavePreferences();
         panel.Controls.Add(_coachBox);
+
+        _confineMouseBox = Check("스타 마우스 가두기", true);
+        _confineMouseBox.CheckedChanged += (_, _) => SavePreferences();
+        panel.Controls.Add(_confineMouseBox);
 
         panel.Controls.Add(Label("CoachAI 빌드표"));
         _coachBuildBox = Combo(new object[]
@@ -241,6 +289,7 @@ public sealed class MainForm : Form
             new CoachBuildChoice("내 종족 기본", "auto"),
             new CoachBuildChoice(CoachAiBuildPresets.KeepExisting.Name, CoachAiBuildPresets.KeepExisting.Id)
         }.Concat(CoachAiBuildPresets.All.Select(preset => new CoachBuildChoice(preset.Name, preset.Id))));
+        _coachBuildBox.SelectedIndexChanged += (_, _) => SavePreferences();
         panel.Controls.Add(_coachBuildBox);
 
         _startButton = Button("스파링 시작", async (_, _) => await StartSparringAsync());
@@ -277,8 +326,8 @@ public sealed class MainForm : Form
             return;
         }
 
-        var currentBot = SelectedBot()?.Id;
-        var currentMap = SelectedMap()?.RelativePath;
+        var currentBot = keepSelection ? SelectedBot()?.Id : _preferences.BotId;
+        var currentMap = keepSelection ? SelectedMap()?.RelativePath : _preferences.MapRelativePath;
 
         if (_rootBox is not null && !string.Equals(_rootBox.Text, starCraftRoot, StringComparison.OrdinalIgnoreCase))
         {
@@ -310,13 +359,20 @@ public sealed class MainForm : Form
             _mapBox.SelectedIndex = Math.Max(0, selectedIndex);
         }
 
-        if (!_loadedInitialData)
+        var isInitialLoad = !_loadedInitialData;
+        if (isInitialLoad)
         {
-            SelectRace(_playerRaceBox, Race.Terran);
+            SelectRace(_playerRaceBox, _preferences.PlayerRace);
+            SelectOptionalRace(_enemyRaceBox, _preferences.EnemyRace);
+            SelectTier(_preferences.Tier);
+            SelectSort(_preferences.Sort);
+        }
+        RefreshBuildFilters(isInitialLoad ? _preferences.BuildFilter : null);
+        RefreshBots(currentBot);
+        if (isInitialLoad)
+        {
             _loadedInitialData = true;
         }
-        RefreshBuildFilters();
-        RefreshBots(currentBot);
         UpdateCoachStatus();
         Log($"{starCraftRoot}에서 사용 가능한 봇 {_allBots.Count}개, 맵 {_allMaps.Count}개를 불러왔습니다.");
     }
@@ -385,14 +441,14 @@ public sealed class MainForm : Form
         };
     }
 
-    private void RefreshBuildFilters()
+    private void RefreshBuildFilters(string? preferredFilter = null)
     {
         if (_buildFilterBox is null)
         {
             return;
         }
 
-        var selected = _buildFilterBox.SelectedItem?.ToString();
+        var selected = preferredFilter ?? _buildFilterBox.SelectedItem?.ToString();
         var enemyRace = SelectedEnemyRace();
         var bots = enemyRace is null
             ? _allBots
@@ -439,8 +495,24 @@ public sealed class MainForm : Form
             _buildBox.Items.Add(new BuildListItem(build));
         }
 
-        _buildBox.SelectedIndex = _buildBox.Items.Count > 0 ? 0 : -1;
+        var preferredBuildId = _suppressPreferenceSave ? _preferences.BotBuildId : null;
+        var preferredIndex = -1;
+        if (!string.IsNullOrWhiteSpace(preferredBuildId))
+        {
+            for (var i = 0; i < _buildBox.Items.Count; i++)
+            {
+                if (_buildBox.Items[i] is BuildListItem item &&
+                    item.Build.Id.Equals(preferredBuildId, StringComparison.OrdinalIgnoreCase))
+                {
+                    preferredIndex = i;
+                    break;
+                }
+            }
+        }
+
+        _buildBox.SelectedIndex = _buildBox.Items.Count > 0 ? Math.Max(0, preferredIndex) : -1;
         UpdateDetails();
+        SavePreferences();
     }
 
     private void UpdateDetails()
@@ -500,6 +572,7 @@ public sealed class MainForm : Form
         try
         {
             var settings = CurrentSettings();
+            SavePreferences();
             var hotkeys = HotkeyImporter.ImportBestAvailable(settings.StarCraftRoot);
             Log(hotkeys.Message);
 
@@ -538,16 +611,21 @@ public sealed class MainForm : Form
             Log($"선택값 확인: 내 종족 {RaceKo(settings.PlayerRace)}, 상대 봇 {settings.Bot.Name}({RaceKo(settings.Bot.Race)}), 맵 {settings.Map.Name}");
             Log($"내 클라이언트 설정 완료: {RaceKo(settings.PlayerRace)} / {settings.Map.Name} / {settings.GameName}. INI: {playerIni}");
 
-            _launcher.LaunchChaos(settings.StarCraftRoot, ChaosLaunchMode.Bot, clickStart: true, closeLauncherAfterStart: false);
-            Log("내 클라이언트를 실행했습니다. 자동으로 Local PC 방 생성을 시도합니다.");
-
-            await Task.Delay(TimeSpan.FromSeconds(25));
-
             var botIni = _configurator.ApplyBotJoin(botSettings);
             Log($"AI 참가 설정 완료: {settings.Bot.Name} / {RaceKo(settings.Bot.Race)} / 소리 OFF. INI: {botIni}");
 
-            _launcher.LaunchChaos(botSettings.StarCraftRoot, ChaosLaunchMode.Bot, clickStart: true, closeLauncherAfterStart: false);
-            Log("AI 클라이언트를 실행했습니다. 같은 방에 자동 참가를 시도합니다.");
+            Log("ChaosLauncher 두 개를 먼저 병렬로 엽니다. 방 생성/참가 단계만 순서대로 진행합니다.");
+            var playerLauncherTask = Task.Run(() => _launcher.OpenChaos(settings.StarCraftRoot, ChaosLaunchMode.Bot));
+            var botLauncherTask = Task.Run(() => _launcher.OpenChaos(botSettings.StarCraftRoot, ChaosLaunchMode.Bot));
+            await Task.WhenAll(playerLauncherTask, botLauncherTask);
+
+            _launcher.ClickStart(playerLauncherTask.Result, TimeSpan.FromSeconds(20));
+            Log("내 클라이언트를 시작했습니다. 자동으로 Local PC 방 생성을 시도합니다.");
+
+            await Task.Delay(TimeSpan.FromSeconds(8));
+
+            _launcher.ClickStart(botLauncherTask.Result, TimeSpan.FromSeconds(20));
+            Log("AI 클라이언트를 시작했습니다. 같은 방에 자동 참가를 시도합니다.");
 
             _history.Add(settings.StarCraftRoot, new MatchRecord(
                 DateTime.Now,
@@ -619,12 +697,75 @@ public sealed class MainForm : Form
 
         var hasCoach = CoachAiLocator.FindCoachAiDll(_rootBox.Text.Trim()) is not null;
         _coachBox.Enabled = hasCoach;
-        _coachBox.Checked = hasCoach;
+        if (!hasCoach)
+        {
+            _coachBox.Checked = false;
+        }
+        else if (_suppressPreferenceSave)
+        {
+            _coachBox.Checked = _preferences.CoachAi;
+        }
         _coachBox.ForeColor = hasCoach ? UiPalette.Text : UiPalette.Dim;
         if (_coachBuildBox is not null)
         {
             _coachBuildBox.Enabled = hasCoach;
         }
+    }
+
+    private void ApplyInitialPreferences()
+    {
+        _rootBox.Text = _preferences.StarCraftRoot ?? PracticeCatalog.DefaultRoot;
+        _gameNameBox.Text = string.IsNullOrWhiteSpace(_preferences.GameName) ? "AIPractice" : _preferences.GameName;
+        _searchBox.Text = _preferences.Search ?? string.Empty;
+        _windowedBox.Checked = _preferences.WindowedMode;
+        _coachBox.Checked = _preferences.CoachAi;
+        _confineMouseBox.Checked = _preferences.ConfineMouse;
+        SelectSpeed(_preferences.SpeedOverrideMs);
+        SelectCoachBuild(_preferences.CoachBuildId);
+    }
+
+    private void SavePreferences()
+    {
+        if (_suppressPreferenceSave ||
+            _rootBox is null ||
+            _playerRaceBox is null ||
+            _enemyRaceBox is null ||
+            _tierBox is null ||
+            _sortBox is null ||
+            _buildFilterBox is null ||
+            _searchBox is null ||
+            _botList is null ||
+            _mapBox is null ||
+            _buildBox is null ||
+            _speedBox is null ||
+            _gameNameBox is null ||
+            _windowedBox is null ||
+            _coachBox is null ||
+            _confineMouseBox is null ||
+            _coachBuildBox is null)
+        {
+            return;
+        }
+
+        new LauncherPreferences
+        {
+            StarCraftRoot = _rootBox.Text.Trim(),
+            PlayerRace = SelectedPlayerRace(),
+            EnemyRace = SelectedEnemyRace(),
+            Tier = SelectedTier(),
+            BuildFilter = _buildFilterBox.SelectedItem?.ToString(),
+            Sort = (_sortBox.SelectedItem as SortChoice)?.Id ?? "recommended",
+            Search = _searchBox.Text,
+            BotId = SelectedBot()?.Id,
+            MapRelativePath = SelectedMap()?.RelativePath,
+            BotBuildId = SelectedBuild()?.Id,
+            GameName = string.IsNullOrWhiteSpace(_gameNameBox.Text) ? "AIPractice" : _gameNameBox.Text.Trim(),
+            SpeedOverrideMs = (_speedBox.SelectedItem as SpeedChoice)?.SpeedOverrideMs,
+            WindowedMode = _windowedBox.Checked,
+            CoachAi = _coachBox.Checked,
+            CoachBuildId = (_coachBuildBox.SelectedItem as CoachBuildChoice)?.Id ?? "auto",
+            ConfineMouse = _confineMouseBox.Checked
+        }.Save();
     }
 
     private BotProfile? SelectedBot() => (_botList.SelectedItem as BotListItem)?.Bot;
@@ -667,6 +808,68 @@ public sealed class MainForm : Form
             if (combo.Items[i] is RaceChoice choice && choice.Race == race)
             {
                 combo.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    private void SelectOptionalRace(ComboBox combo, Race? race)
+    {
+        for (var i = 0; i < combo.Items.Count; i++)
+        {
+            if (combo.Items[i] is RaceChoice choice && choice.Race == race)
+            {
+                combo.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    private void SelectTier(DifficultyTier? tier)
+    {
+        for (var i = 0; i < _tierBox.Items.Count; i++)
+        {
+            if (_tierBox.Items[i] is TierChoice choice && choice.Tier == tier)
+            {
+                _tierBox.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    private void SelectSort(string sortId)
+    {
+        for (var i = 0; i < _sortBox.Items.Count; i++)
+        {
+            if (_sortBox.Items[i] is SortChoice choice &&
+                choice.Id.Equals(sortId, StringComparison.OrdinalIgnoreCase))
+            {
+                _sortBox.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    private void SelectSpeed(int? speedOverrideMs)
+    {
+        for (var i = 0; i < _speedBox.Items.Count; i++)
+        {
+            if (_speedBox.Items[i] is SpeedChoice choice && choice.SpeedOverrideMs == speedOverrideMs)
+            {
+                _speedBox.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    private void SelectCoachBuild(string coachBuildId)
+    {
+        for (var i = 0; i < _coachBuildBox.Items.Count; i++)
+        {
+            if (_coachBuildBox.Items[i] is CoachBuildChoice choice &&
+                choice.Id.Equals(coachBuildId, StringComparison.OrdinalIgnoreCase))
+            {
+                _coachBuildBox.SelectedIndex = i;
                 return;
             }
         }

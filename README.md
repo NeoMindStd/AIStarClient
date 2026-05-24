@@ -10,7 +10,7 @@ SCHNAIL, BWAPI Revamped packages, or third-party bot binaries.
 
 ## Current version
 
-`0.1.2`
+`0.1.3`
 
 Semantic versioning is used:
 
@@ -55,13 +55,15 @@ dotnet build .\src\StarAI.PracticeClient.App\StarAI.PracticeClient.App.csproj -c
 2. Select your race, opponent race, difficulty, bot, map, and bot build.
 3. Optionally enable CoachAI and choose a build overlay.
 4. Click `스파링 시작`.
-5. The launcher starts the player client first, waits for the host room to be
-   created, then starts the AI client with sound disabled.
+5. The launcher opens both ChaosLauncher instances first, starts the player
+   client to create the Local PC room, then starts the AI client with sound
+   disabled after a short join delay.
 
 When AIStarClient writes CoachAI config, it keeps CoachAI in advice-only mode:
 no auto-mining, no worker auto-training, no automatic supply building, no
-production queue cancellation, and repeated warning intervals default to 60
-seconds.
+production queue cancellation, no opponent-state overlay, and repeated warning
+intervals default to 60 seconds. Build-order and rally-point overlays remain
+enabled.
 
 Known-crashing local bots are excluded from the selectable bot list when crash
 evidence is known from local StarCraft error logs. At the moment

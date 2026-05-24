@@ -10,6 +10,24 @@ public sealed class PracticeLauncher
     [SupportedOSPlatform("windows")]
     public Process LaunchChaos(string starCraftRoot, ChaosLaunchMode mode, bool clickStart = false, bool closeLauncherAfterStart = false)
     {
+        var process = OpenChaos(starCraftRoot, mode);
+
+        if (clickStart)
+        {
+            ClickStart(process, TimeSpan.FromSeconds(20));
+        }
+
+        if (clickStart && closeLauncherAfterStart)
+        {
+            CloseLauncherWindow(process);
+        }
+
+        return process;
+    }
+
+    [SupportedOSPlatform("windows")]
+    public Process OpenChaos(string starCraftRoot, ChaosLaunchMode mode)
+    {
         _chaos.Apply(mode);
 
         var launcher = Path.Combine(starCraftRoot, "Chaoslauncher - MultiInstance.exe");
@@ -25,17 +43,16 @@ public sealed class PracticeLauncher
             UseShellExecute = true
         }) ?? throw new InvalidOperationException("Failed to start ChaosLauncher.");
 
-        if (clickStart && !ChaosLauncherWindowAutomation.ClickStart(process, TimeSpan.FromSeconds(10)))
+        return process;
+    }
+
+    [SupportedOSPlatform("windows")]
+    public void ClickStart(Process process, TimeSpan timeout)
+    {
+        if (!ChaosLauncherWindowAutomation.ClickStart(process, timeout))
         {
             throw new InvalidOperationException("ChaosLauncher Start button could not be clicked automatically.");
         }
-
-        if (clickStart && closeLauncherAfterStart)
-        {
-            CloseLauncherWindow(process);
-        }
-
-        return process;
     }
 
     private static void CloseLauncherWindow(Process process)
