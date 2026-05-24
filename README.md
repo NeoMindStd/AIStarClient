@@ -10,7 +10,7 @@ SCHNAIL, BWAPI Revamped packages, or third-party bot binaries.
 
 ## Current version
 
-`0.1.1`
+`0.1.2`
 
 Semantic versioning is used:
 
@@ -57,6 +57,11 @@ dotnet build .\src\StarAI.PracticeClient.App\StarAI.PracticeClient.App.csproj -c
 4. Click `스파링 시작`.
 5. The launcher starts the player client first, waits for the host room to be
    created, then starts the AI client with sound disabled.
+
+When AIStarClient writes CoachAI config, it keeps CoachAI in advice-only mode:
+no auto-mining, no worker auto-training, no automatic supply building, no
+production queue cancellation, and repeated warning intervals default to 60
+seconds.
 
 Known-crashing local bots are excluded from the selectable bot list when crash
 evidence is known from local StarCraft error logs. At the moment

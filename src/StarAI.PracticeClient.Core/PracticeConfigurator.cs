@@ -272,9 +272,10 @@ public sealed class PracticeConfigurator
         controlPanel["maxWorkers"] = 200;
         controlPanel["autoMine"] = false;
         controlPanel["autoBuildSuppliesBeforeBlocked"] = -200;
-        controlPanel["workerCutWarningEvery"] = 8;
-        controlPanel["idleWorkerWarningEvery"] = 8;
-        controlPanel["idleProductionBuildingWarningEvery"] = 30;
+        controlPanel["maxProductionBuildingQueue"] = 999999;
+        controlPanel["workerCutWarningEvery"] = 60;
+        controlPanel["idleWorkerWarningEvery"] = 60;
+        controlPanel["idleProductionBuildingWarningEvery"] = 60;
         controlPanel["idleFightingUnitWarningEvery"] = 60;
         controlPanel["totalTimeOnScreenOrSelectionAbove"] = 9999;
         controlPanel["sameScreenWarningEvery"] = 9999;
@@ -453,10 +454,10 @@ public sealed class PracticeConfigurator
             "maxWorkers": 200,
             "autoMine": false,
             "autoBuildSuppliesBeforeBlocked": -200,
-            "maxProductionBuildingQueue": 2,
-            "workerCutWarningEvery": 8,
-            "idleWorkerWarningEvery": 8,
-            "idleProductionBuildingWarningEvery": 30,
+            "maxProductionBuildingQueue": 999999,
+            "workerCutWarningEvery": 60,
+            "idleWorkerWarningEvery": 60,
+            "idleProductionBuildingWarningEvery": 60,
             "idleFightingUnitWarningEvery": 60,
             "totalTimeOnScreenOrSelectionAbove": 9999,
             "sameScreenWarningEvery": 9999,

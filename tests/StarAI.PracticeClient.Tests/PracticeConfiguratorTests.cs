@@ -147,6 +147,9 @@ public class PracticeConfiguratorTests
         Assert.Equal("ON", ini.Get("starcraft", "sound"));
         Assert.True(File.Exists(coachConfig));
         Assert.Contains("\"autoTrainWorkers\": false", File.ReadAllText(coachConfig));
+        Assert.Contains("\"autoMine\": false", File.ReadAllText(coachConfig));
+        Assert.Contains("\"maxProductionBuildingQueue\": 999999", File.ReadAllText(coachConfig));
+        Assert.Contains("\"idleWorkerWarningEvery\": 60", File.ReadAllText(coachConfig));
         Assert.Contains("\"TimedBo1\"", File.ReadAllText(coachConfig));
     }
 
@@ -162,6 +165,8 @@ public class PracticeConfiguratorTests
         var text = File.ReadAllText(coachConfig);
         Assert.Contains(preset.TitleForOverlay, text);
         Assert.Contains("autoTrainWorkers", text);
+        Assert.Contains("\"autoMine\": false", text);
+        Assert.Contains("\"maxProductionBuildingQueue\": 999999", text);
     }
 
     [Fact]
