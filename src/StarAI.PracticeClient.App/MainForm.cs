@@ -620,6 +620,9 @@ public sealed class MainForm : Form
             };
             Log($"AI 전용 런타임 확인 완료: {aiRoot}");
 
+            WModeConfigurator.Apply(settings.StarCraftRoot, _confineMouseBox.Checked);
+            WModeConfigurator.Apply(aiRoot, clipCursor: false);
+
             var playerIni = _configurator.ApplyPlayerHost(settings, coachDll);
             Log($"선택값 확인: 내 종족 {RaceKo(settings.PlayerRace)}, 상대 봇 {settings.Bot.Name}({RaceKo(settings.Bot.Race)}), 맵 {settings.Map.Name}");
             Log($"내 클라이언트 설정 완료: {RaceKo(settings.PlayerRace)} / {settings.Map.Name} / {settings.GameName}. INI: {playerIni}");

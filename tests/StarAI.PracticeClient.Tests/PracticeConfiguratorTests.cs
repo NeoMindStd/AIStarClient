@@ -380,6 +380,29 @@ public class PracticeConfiguratorTests
         Assert.Equal("OFF", botIni.Get("starcraft", "sound"));
     }
 
+    [Fact]
+    public void WModeConfigurator_WritesCursorClipAndKeepsWindowMoveEnabled()
+    {
+        var root = CreateFakeStarCraftRoot();
+        File.WriteAllText(Path.Combine(root, "wmode.ini"), """
+            [W-MODE]
+            WindowClientX=10
+            WindowClientY=20
+            ClipCursor=1
+            EnableWindowMove=0
+            """);
+
+        var path = WModeConfigurator.Apply(root, clipCursor: false);
+        var ini = BwapiIni.Load(path);
+
+        Assert.Equal("0", ini.Get("W-MODE", "ClipCursor"));
+        Assert.Equal("0", ini.Get("W-MODE", "SaveClipCursor"));
+        Assert.Equal("1", ini.Get("W-MODE", "EnableWindowMove"));
+        Assert.Equal("0", ini.Get("W-MODE", "AlwaysOnTop"));
+        Assert.Equal("0", ini.Get("W-MODE", "DisableControls"));
+        Assert.Equal("10", ini.Get("W-MODE", "WindowClientX"));
+    }
+
     private static string CreateFakeStarCraftRoot()
     {
         var root = Path.Combine(Path.GetTempPath(), "starai-tests", Guid.NewGuid().ToString("N"));
